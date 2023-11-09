@@ -60,4 +60,77 @@ public class B0002 {
 
     - public void run 메서드가 단순하게 ()로 변경될 수 있었던 이유는 Runnable 인터페이스가 가진 추상 메서드가 run 메서드 하나이기 때문에
 
+<br>
+
 - 함수형 인터페이스
+
+  - 추상 메서드를 하나만 갖고 있는 인터페이스를 지칭
+  - 함수형 인터페이스만을 람다식으로 변경 가능
+  - 예시 코드
+
+    ```java
+    public class B005 {
+        public static void main(String[] args) {
+            // 추상 메서드 구현
+            MyFunctionalInterface mfi = (int a) -> {
+                return a * a;
+            };
+
+            // 간략화, 최적화 된 코드
+            // MyFunctionalInterface mfi = a -> a * a;
+            int b = mfi.runSometing(5);
+            System.out.println(b);
+        }
+
+        // 애노테이션과 추상 메서드 정의
+        @FunctionalInterface
+        interface MyfunctionalInterface {
+            public abstract int runSometing(int count);
+        }
+    }
+    ```
+
+  - @FunctionalInterface 어노테이션 -> 컴파일러는 인터페이스가 함수형 인터페이스의 조건에 맞는지 검사. -> 즉, 추상 메서드를 하나만 가지고 있는지 검사한다.
+    <br>
+
+- 메서드 호출 인자로 람다 사용
+
+  ```java
+  public class B006 {
+      public static void main(String[] args) {
+          // 메서드 호출 인자로 람다 사용
+          MyFunctionalInterface mfi = a -> a * a;
+          doIt(mfi);
+
+          // 람다식을 한번만 사용한다면 굳이 변수에 할당도 필요없음
+          doIt(a -> a * a);
+
+          // 메서드 반환값으로 람다 사용. 한 번만 사용하기에 굳이 runSomething에 대한 정의 필요 없음
+          MyFunctionalInterface2 mfi2 = todo();
+          int result = mfi2.runSomething(3);
+          System.out.println(result);
+      }
+
+      public static void doIt(MyFunctionalInterface mfi) {
+          int b = mfi.runSomething(5);
+          System.out.println(b);
+      }
+
+      public static MyFunctionalInterface2 todo() {
+        return num -> num * num;
+      }
+  }
+  ```
+
+  <br>
+
+- 자바 8 API에서 제공하는 대표적인 함수형 인터페이스
+
+  | 함수형 인터페이스 | 추상 메서드       | 용도                                              |
+  | ----------------- | ----------------- | ------------------------------------------------- |
+  | Runnable          | void run()        | *실행*할 수 있는 ㅣ인터페이스                     |
+  | Supplier<T>       | T get()           | *제공*할 수 있는 인터페이스                       |
+  | Consumer<T>       | void accept(T t)  | *소비*할 수 있는 인터페이스                       |
+  | Function<T, R>    | R apply(T t)      | *입력을 받아서 출력*할 수 있는 인터페이스         |
+  | Predicate<T>      | Boolean test(T t) | 입력을 받아 *참/거짓을 단정*할 수 있는 인터페이스 |
+  | UnaryOperator<T>  | T apply(T t)      | *단항 연산*을 할 수 있는 인터페이스               |
