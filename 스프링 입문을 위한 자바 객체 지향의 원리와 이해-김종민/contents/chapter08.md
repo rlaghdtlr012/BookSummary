@@ -134,3 +134,44 @@ public class B0002 {
   | Function<T, R>    | R apply(T t)      | *입력을 받아서 출력*할 수 있는 인터페이스         |
   | Predicate<T>      | Boolean test(T t) | 입력을 받아 *참/거짓을 단정*할 수 있는 인터페이스 |
   | UnaryOperator<T>  | T apply(T t)      | *단항 연산*을 할 수 있는 인터페이스               |
+
+  <br>
+
+- 컬렉션 스트림에서 람다 사용
+
+      - 컬렉션 스트림을 통해 더 적은 코드로 더 안정적인 코드 만들기 가능
+      ```java
+      public class B012 {
+          public static void main(String[] args) {
+              Integer[] ages = { 20, 25, 18, 27, 30, 21, 17, 19, 34, 28 };
+              // 향상된 for문을 사용한 20세 미만 출입금지 코드
+              for (int age : ages) {
+                  if (age < 20) {
+                      System.out.println("Age %d!!! Can't enter\n", age);
+                  }
+              }
+
+              // ***스트림을 이용한 반복문!!***
+              // filter로 age를 걸러준 후,
+              // 스트림 내부 반복을 실행하는 forEach 메서드 사용(이미 filter된 새로운 Array에 반복문을 돌림)
+              Arrays.stream(ages)
+                  .filter(age -> age < 20)
+                  .forEach(age -> System.out.println("Age %d!!! Can't enter\n", age));
+          }
+      }
+      ```
+      - 함수형 프로그래밍의 장점: 선언적 프로그래밍 가능. 기존의 "어떻게 하라" 식의 프로그래밍 방식이 아닌 "무엇을 원한다" 식의 선언적 프로그래밍.
+
+  <br>
+
+- 메서드 레퍼런스와 생성자 레퍼런스
+  ```java
+  // 아래 두 코드는 같은 의미
+  Arrays.stream(ages).sorted().forEach(System.out::println);
+  Arrays.stream(ages).sorted().forEach(age -> System.out.println(age));
+  ```
+- 인자를 아무런 가공 없이 그대로 출력 -> 이런 코드를 메서드 레퍼런스라고 함
+  - 인스턴스::인스턴스메서드
+  - 클래스::정적메서드
+  - 클래스::인스턴스메서드
+- 위 세 가지 케이스로 사용 가능
