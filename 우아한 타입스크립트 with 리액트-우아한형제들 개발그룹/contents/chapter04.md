@@ -265,3 +265,179 @@
     destinationCodelist.includes(x);
   };
   ```
+
+## 4.3 타입 좁히기 - 식별할 수 있는 유니옴(Discriminated Unions)
+
+### 에러 정의하기
+
+- 배민에서는 사용자가 필요한 값을 올바르게 입력했는지를 확인하는 유효성 검사를 진행.
+- 입력값을 검사하는 과정에서 입력의 에러를 크게 "텍스트 에러", "토스트 에러", "얼럿 에러"로 분류한다.
+- 각 에러는 에러 코드와 메시지가 다르고 각각의 에러 처리를 어떻게 할 것인가를 다양하게 처리해야 한다.
+
+  ```typescript
+  type TextError = {
+    errorCode: string;
+    errorMessage: string;
+  };
+  type ToastError = {
+    errorCode: string;
+    errorMessage: string;
+    toastShowDuration: number; // 토스트를 띄우줄 시간
+  };
+  type AlertError = {
+    errorCode: string;
+    errorMessage: string;
+    onConfirm: () => void; // 얼럿 창의 확인 버튼을 누른 뒤 액션
+  };
+
+  type ErrorFeedbackType = TextError | ToastError | AlertError;
+  const errorArr: ErrorFeedbackType[] = [
+    { errorCode: "100", errorMessage: "텍스트 에러" },
+    { errorCode: "200", errorMessage: "토스트 에러", toastShowDuration: 3000 },
+    { errorCode: "300", errorMessage: "얼럿 에러", onConfirm: () => {} },
+  ];
+  ```
+
+- errorArr를 정의함으로써 다양한 에러 객체를 관리할 수 있게 됨.
+- toastShowDuration 필드와 onConfirm 필드를 모두 가지는 객체에 대해서는 타입 에러를 뱉게 하기 위해서는?
+  ```typescript
+  cosnt errorArr: ErrorFeedbackType[] = [
+    {
+      errorCode: "999",
+      errorMessage: "잘못된 에러",
+      toastShowDuration: 3000,
+      onConfirm: () => P{,}
+    },
+  ];
+  // 이런 경우 에러가 발생되어야 하지만
+  // js의 덕타이핑으로 인해 별도의 타입 에러를 발생시키지 않음
+  // 이는 추후 개발함에 있어서 큰 문제를 야기시킬 수 있음.
+  ```
+
+### 식별할 수 있는 유니온
+
+- 따라서 에러 타입을 구분할 방법이 필여함
+- 식별할 수 있는 유니온이란? 타입 간의 구조 호환을 막기 위해 타입마다 구분할 수 있는 **판별자(태그)를 달아주어 포함 관계를 제거**하는 것
+
+  ```typescript
+  // 에러 타입 정의를 통한 타입 구분
+  type TextError = {
+    errorType: "TEXT";
+    errorCode: string;
+    errorMessage: string;
+  };
+  type ToastError = {
+    errorType: "TOAST";
+    errorCode: string;
+    errorMessage: string;
+    toastShowDuration: number; // 토스트를 띄우줄 시간
+  };
+  type AlertError = {
+    errorType: "ALERT";
+    errorCode: string;
+    errorMessage: string;
+    onConfirm: () => void; // 얼럿 창의 확인 버튼을 누른 뒤 액션
+  };
+
+  type ErrorFeedbackType = TextError | ToastError | AlertError;
+  const errorArr: ErrorFeedbackType[] = [
+    { errorType: "TEXT", errorCode: "100", errorMessage: "텍스트 에러" },
+    {
+      errorType: "TOAST",
+      errorCode: "200",
+      errorMessage: "토스트 에러",
+      toastShowDuration: 3000,
+    },
+    {
+      errorType: "ALERT",
+      errorCode: "300",
+      errorMessage: "얼럿 에러",
+      onConfirm: () => {},
+    },
+    {
+      errorType: "TOAST",
+      errorCode: "900",
+      errorMessage: "얼럿 에러",
+      toastShowDuration: 3000,
+      onConfirm: () => {},
+    }, // 에러 발생!!!!!!!
+    // "TOAST" 에러에는 onConfirm에 관한 속성이 포함되어 있지 않다!!
+  ];
+  ```
+
+- 우리가 처음에 기대했던 정확하지 않은 에러 객체에 대한 타입 에러가 발생하는 것을 확인 가능
+
+### 식별할 수 있는 유니온 판별자 선정
+
+- 위 코드에서 errorType이 식별할 수 있는 유니온 판별자라고 할 수 있다.
+- 식별할 수 있는 유니온 판별자는 유닛 타입(다른 타입으로 쪼개지지 않는 오직 하나의 정확한 값을 가지는 타입. ex: null, undefined, true, 1 등)으로 선언되어야 정상적으로 동작함.
+- 식별할 수 있는 유니온 판별자로 사용할 수 있는 타입
+
+  1. 리터럴 타입이어야 함("TOAST", "ALERT", 3과 같이 정확히 특정한 값을 가지는 타입)
+  2. 판별자로 선정한 값에 적어도 하나 이상의 유닛 타입이 포함되어야 하며, 인스턴스화 할 수 있는 타입은 포함되지 않아야 한다.
+
+  ```typescript
+  interface A {
+    value: "A"; // 가능한 unit type
+    answer: 1;
+  }
+
+  interface B {
+    value: string; // 불가능한 unit type!!
+    answer: 2;
+  }
+
+  interface C {
+    value: Error; // 인스턴스화 할 수 있는 타입이므로 불가능한 unit type!!
+    answer: 3;
+  }
+  ```
+
+- 판별자가 value 일 때는 interface A의 value: "A" 만이 유일한 유닛 타입이 된다.
+- 판별자가 answer 일 때는 모두 다 리터럴한 타입이므로 모두 유일한 유닛 타입이 된다.
+
+## 4.4 Exhaustiveness Checking으로 정확한 타입 분기 유지하기
+
+- Exhaustiveness: 사전적으로 철저함, 완전함을 의미
+- 즉, Exhaustiveness Checking은 모든 케이스에 대해 철저하게 타입을 검사(강제)하는 것을 의미
+
+### 상품권
+
+- 상품권 가격에 따라 상품권의 이름을 반환하는 함수
+  ```typescript
+  type ProdctPrice = "10000" | "20000";
+  const getProductName = (productPrice: ProdctPrice): string => {
+    if (productPrice === "10000") return "배민상품권 1만 원";
+    if (productPrice === "20000") return "배민상품권 2만 원";
+    else {
+      return "배민상품권";
+    }
+  };
+  ```
+- 위와 같은 코드에 만약 ProductPrice가 50000원인 케이스가 추가된다고 가정해보자.
+- 그렇다면 type에 50000을 추가해야 하고, 이에 따라 50000원 케이스에 대한 분기문도 따로 작성해주어야 한다.
+- 이 과정에서 코드를 누락하거나 실수하는 경우가 생길수도 있음. 그것을 방지하는 것이 exhaustive checking(**모든 타입에 대한 타입 검사 강제**)
+- 모든 타입에 대한 타입 검사를 하지 않았을 경우 에러 발생
+
+  ```typescript
+  // exhaustive checking을 적용한 코드
+  type ProdctPrice = "10000" | "20000" | "50000";
+  const getProductName = (productPrice: ProdctPrice): string => {
+    if (productPrice === "10000") return "배민상품권 1만 원";
+    if (productPrice === "20000") return "배민상품권 2만 원";
+    // 실수로 50000에 대한 분기처리를 누락했다고 가정
+    // if (productPrice === "50000") return "배민상품권 5만 원";
+    else {
+      exhaustiveCheck(productPrice); // Error: String 타입의 인자는 never 타입에 할당될 수 없다.
+      return "배민상품권";
+    }
+  };
+
+  const exhausitiveCheck = (param: never) => {
+    throw new Error("type Error");
+  };
+  ```
+
+- 위 코드는 productPrice가 50000인 경우의 분기를 처리하지 않았기 때문에 exhaustiveCheck에서 에러를 발생시킨다.
+- **모든 타입에 대한 분기처리를 하지 않아 줬을 때, 컴파일타임 에러가 발생하는 것을 exhaustiveCheck라고 한다.**
+- exhaustiveCheck는 예상치못한 런타임 에러 방지 및 요구사항 변경시, 생길 수 있는 위험성을 줄일 수 있음.
