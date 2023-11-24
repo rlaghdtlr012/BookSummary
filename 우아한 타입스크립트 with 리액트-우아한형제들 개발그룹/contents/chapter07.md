@@ -155,3 +155,14 @@ function isListItem(listItems: ListItem[]) {
   listItems.forEach((item) => assert(item, ListItem));
 }
 ```
+
+<br><br>
+
+## 7.2 API 상태 관리하기
+
+- 비동기 함수는 컴포넌트 내에서 직접 호출하지 않음
+- 비동기 API의 성공, 실패에 따른 상태관리 라이브러리의 액션이나 훅과 같이 재정의된 형태 사용해야 함
+
+### 상태 관리 라이브러리에서 호출하기
+
+-
