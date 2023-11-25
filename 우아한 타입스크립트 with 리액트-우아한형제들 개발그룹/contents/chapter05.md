@@ -111,3 +111,23 @@ export const useGetRegisteredList = (
     ? Card
     : Bank;
   ```
+
+- PqyMethodType이 "card"나 "appcard"일 경우, PaymethodInfo<Card> 타입을, 아닐 때는 PaMethodInfo<Bank> 타입을 반환
+- 결제 수단 타입은 "card", "appcard", "bank"만 들어올 수 있게 extends를 한정자로 사용하여 제네릭에 넘겨오는 값을 제한함
+- extends 활용 예시
+  - 제네릭과 extends를 함께 사용하여 제네릭을 받는 타입을 제한. 개발자가 잘못된 값을 넘길 수 없기 때문에 휴먼 에러를 방지할 수 있음
+  - extends를 활용해 조건부 타입을 설정. 반환 값을 사용자가 원하는 값으로 구체화 가능
+
+### infer를 활용해서 타입추론하기
+
+- extends로 조건을 서술하고, infer로 타입을 추론하는 방식
+
+  ```tsx
+  type UnpackPromise<T> = T extends Promise<infer K>[] ? K : any;
+
+  const promises = [Promise.resolve("Mark", Promise.resolve(38))];
+  type Expected = UnpackPromise<typeof promises>; // string | number
+  ```
+
+- UnpackPromise 타입은 제네릭을 T를 받아 T가 Promise로 래핑된 경우, K를 반환. 그렇지 않은 경우 any를 반환
+- Promise<infer K> => Promise의 반환값을 추론해 해당값의 타입을 K로 한다는 의미
