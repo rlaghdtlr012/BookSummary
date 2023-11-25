@@ -131,3 +131,28 @@ export const useGetRegisteredList = (
 
 - UnpackPromise 타입은 제네릭을 T를 받아 T가 Promise로 래핑된 경우, K를 반환. 그렇지 않은 경우 any를 반환
 - Promise<infer K> => Promise의 반환값을 추론해 해당값의 타입을 K로 한다는 의미
+  <br><br>
+
+## 5.2 템플릿 리터럴 타입 활용하기
+
+- 자바스크립트의 템플릿 리터럴 문법을 사용해 특정 문자열에 대한 타입을 선언할 수 있는 기능.
+
+```typescript
+type HeadingNumber = 1 | 2 | 3 | 4 | 5;
+type HeaderTag = `h${HeadingNumber}`;
+
+type Direction =
+  | "top"
+  | "topLeft"
+  | "topRight"
+  | "bottom"
+  | "bottomleft"
+  | "bottomRight";
+
+// 위 Direction 타입을 템플릿 리터럴을 사용하여 아래와 같이 가독성 좋고 재사용과 수정에 용이한 타입 선언 가능
+
+type Vertical = "top" | "bottom";
+type Horizon = "left" | "rigjt";
+
+type Direction = Vertical | `${Vertical}${Capitalize<Horizon>}`;
+```
