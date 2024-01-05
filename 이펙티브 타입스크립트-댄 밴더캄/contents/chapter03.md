@@ -1,4 +1,4 @@
-## 3장 타입 추론
+## 3장. 타입 추론
 
 ### 아이템 19: 추론 가능한 타입을 사용해 장황한 코드 방지하기
 
@@ -180,3 +180,235 @@
     }
   }
   ```
+
+### 아이템 23: 한꺼번에 객체 생성하기
+
+- 일반적으로 변수의 값은 바뀔 수 있지만, ts의 타입은 변경되지 않음. 즉, 객체를 생성할 때, 속성을 하나씩 추가하기 보다는 여러 속성을 포함해서 한꺼번에 타입 생성을 하는 것이 유리함
+
+  ```typescript
+  // ts에서는 아래와 같은 상황에서 오류가 뜸
+  const pt = {};
+  pt.x = 3; // '{}' 형식에 'x' 속성이 없습니다.
+  pt.y = 4; // '{}' 형식에 'y' 속성이 없습니다.
+
+  // 다음과 같은 방식을 사용하면 오류 내용이 바뀜
+  interface Point {
+    x: number;
+    y: number;
+  }
+
+  const pt: Point = {};
+  // '{}' 형식에 'Point' 형식의 x, y 속성이 없습니다.
+  pt.x = 3;
+  pt.y = 4;
+
+  // 해결책 1: 객체를 한 번에 정의함으로 해결
+  const pt = {
+    x: 3,
+    y: 4,
+  }; // 정상
+
+  // 해결책 2: 타입 단언문(as)를 사용하여 해결
+  const pt = {} as Point;
+  pt.x = 3;
+  pt.y = 4;
+
+  // 해결책 1이 더 나음
+  ```
+
+- 안전한 타입으로 속성을 추가하려면 destructuring({...a, ...b})의 방법을 사용하는 것도 좋음
+
+### 아이템 24: 일관성 있는 별칭 사용하기
+
+```typescript
+const borough = { name: "Brooklyn", location: [40.688, -73.979] };
+
+// borough.location 배열에 loc이라는 별칭 부여
+const loc = borough.location;
+
+loc[0] = 0;
+console.log(borough.location); // [0, -73.979]
+```
+
+- 별칭의 값을 변경하면 원래 속성값도 변경됨.(제어의 흐름 분석이 어렵게 됨)
+
+- 별칭을 사용했을 때, 타입이 의도한대로 추론되지 않는 경우의 예시
+
+  ```typescript
+  interface Coordinate {
+    x: number;
+    y: number;
+  }
+
+  interface BoundingBox {
+    x: [number, number];
+    y: [number, number];
+  }
+
+  interface Polygon {
+    exterior: Coordinate[];
+    bbox?: BoundingBox;
+  }
+  function isPointInPolygon(polygon: Polygon, pt: Coordinate) {
+    polygon.bbox; // 타입이 BoundingBox | undefined
+    const box = polygon.bbox;
+    box; // 타입이 BoundingBox | undefined
+    if (polygon.bbox) {
+      polygon.bbox; // 타입이 BoundingBox
+      box; // 타입이 BoundingBox | undefined -> 여기서 문제 발생!!!
+    }
+  }
+  ```
+
+- 위 예시에서 polygon.bbox는 타입이 정제되었지만, 별칭인 box타입은 정제되지 않는 모습.
+- 위 현상을 '별칭을 일관성 있게 사용한다.'는 기본 원칙을 지키면 방지할 수 있음.
+
+  ```typescript
+  if (box) {
+    // ~~~ 정상. 이런 식으로 별칭의 타입 좁히기를 사용하여 오류를 방지할 수 있음
+    // 하지만 이는 코드를 읽는 이로 하여금, polygon.bbox와 box는 같은 값이지만
+    // 다른 변수를 사용하고 있기에 혼란을 줄 수 있는 문제가 남아있음
+  }
+
+  // 객체 비구조화를 통해 해결 가능
+  const { bbox } = polygon;
+  if (bbox) {
+    const { x, y } = bbox;
+    // ~~ 정상. 객체 비구조화를 통해 같은 타입(값)에 대해 같은 변수명을 사용가능하게 함
+  }
+  ```
+
+- 타입 별칭은 ts가 타입을 좁히는 것을 방해하기에 일관되게 사용해야 한다.
+- 비구조화 문법을 통해 일관된 이름을 사용해야 한다.
+
+### 아이템 25: 비동기 코드에는 콜백 대신 async 함수 사용하기
+
+- await 키워드는 각각의 프로미스가 처리(resolve) 될 때까지 fetchPages 함수의 실행을 멈춤
+- 프로미스가 거절(reject)되면 예외를 던짐. 따라서 통상적으로 try ~ catch 문과 함께 사용
+  ```typescript
+  async function fetchPages() {
+    try {
+      const response1 = await fetch(url1);
+      const response2 = await fetch(url2);
+      const response3 = await fetch(url3);
+    } catch (e) {
+      // ...
+    }
+  }
+  ```
+- async/await의 장점
+  - 콜백보다 프로미스가 코드를 작성하기 쉬움
+  - 콜백보다 프로미스가 타입을 추론하기 쉬움
+- 가급적 프로미스를 생성하기보다는 async, await을 사용하는 것이 좋음
+  ```typescript
+  // async 함수 예시
+  const getNumber = async () => 42; // 타입이 () => Promise<number>
+  // 프로미스 함수 예시
+  const getNumber = () => Promise.resolve(42); // 타입이 () => Promise<number>
+  // 둘은 같은 역할을 하는 함수들
+  ```
+- async 함수에서 프로미스를 반환하면 또 다른 프로미스로 래칭되지 않음.
+- 반환 타입은 `Promise<Promise<T>>` 가 아닌 `Promise<T>`가 됨.(반환 타입이 명확해짐)
+
+### 아이템 26. 타입 추론에 문맥이 어떻게 사용되는지 이해하기
+
+- ts는 타입을 추론할 때, 단순히 값만 고려하는 것이 아닌, 값이 존재하는 곳의 문맥까지도 살핌
+
+  ```typescript
+  type Language - 'JavaScript' | 'TypeScript' | 'Python';
+  function setLanguage(language: Language) { /** */ }
+
+  setLanguage('JavaScript'); // 인라인 형태. 정상
+
+  let language = 'JavaScript'; // 참조 형태. 타입 오류남
+  setLanguage(language); // 'string' 형식의 인수는 'Language'명식의 매개변수에 할당될 수 없습니다.
+  ```
+
+- 인라인 형태에서 ts는 함수 선언을 통해 매개변수가 Language 타입이어야 한다는 것을 알고 있음.
+- 허나, 이 값을 변수로 분리해내면, ts는 let language = 'JavaScript'에서의 할당 시점에 language의 타입을 제대로 추론하지 못한다.(language의 타입이 string인지, Language인지 판단 불가)
+- 해결 방법 2가지
+  - 타입 선언 때, language의 타입을 제한 하는것
+    ```typescript
+    // 변수 할당 시점에 타입 제한
+    let language: Language = "JavaScript";
+    setLanguage(language); // 정상
+    ```
+  - language를 상수로 만드는 방법
+    ```typescript
+    // language를 상수로 만들어서 타입 체커에게 language는 변하지 않는 값이라고 알려준다.
+    // 따라서 더 정확한 'JavaScript'라는 문자열 리터럴 추론 가능
+    const language = "JavaScript";
+    setLaguage(language); // 정상
+    ```
+- 튜플에서의 타입추론 불가 문제
+
+  ```typescript
+  function panTo(where: [number, number]) {
+    /** */
+  }
+  panTo([10, 20]); // 정상
+
+  const loc = [10, 20];
+  panTo(loc); // 'number[]' 형식의 인수는 '[number, nymber]' 형식의 매개변수에 할당될 수 없습니다.
+  ```
+
+  - 위 예시처럼 panTo는 loc을 number[](길이를 알 수 없는 배열)로 추론함.
+  - 해결책
+
+    ```typescript
+    const loc: [number, number] = [10, 20]; // ts가 의도를 정확히 파악할 수 있도록 타입 선언을 제공하는 방법
+    panTo(loc);
+
+    const loc = [10, 20] as const;
+    panTo(loc); // 'readonly [10, 20]' 형식은 'readonly'이며, 변경 가능한 형식 '[number, number]'에 할당할 수 없습니다.
+    ```
+
+    - const는 값이 가리키는 참조가 변하지 않는다는 얕은(shallow) 상수
+    - as const는 그 값의 내부(deeply)까지 상수라는 뚯
+      - 즉, as const는 readonly가 되어, 추론을 과하게 정확하게 하는 현상이 발생
+      - 따라서 panTo 함수의 파라미터에 readonly 구문을 추가해서 해결
+        ```typescript
+        function panTo(where: readonly [number, number]) {
+          /** */
+        }
+        const loc = [10, 20] as const;
+        panTo([10, 20]); // 정상
+        ```
+
+- 객체에서의 타입추론 불가 문제
+
+  ```typescript
+  type Language = "JavaScript" | "TypeScript" | "Python";
+  interface GovernedLanguage {
+    language: Language;
+    organization: string;
+  }
+
+  function complain(language: GovernedLanguage) {
+    /**  */
+  }
+  complain({ language: "TypeScript", organization: "MS" }); // 정상
+
+  const ts = {
+    language: "TypeScript",
+    organization: "MS",
+  };
+  complain(ts); // '{ language: 'string, organization: 'string'}' 형식의 인수는 'GovernedLanguage' 형식의 매개변수에 할당될 수 없습니다.
+  // language 속성의 형식이 호환되지 않습니다.
+  // string 형식은 Language 형식에 할당할 수 없습니다.
+  ```
+
+  - ts 객체에서 language의 타입은 string으로 추론됨
+  - 해결책
+    - ts 객체에 타입 선언 추가(const ts: GovernedLanguage = ...)
+    - 상수 단언(const ts = {~~~} as const) 사용
+
+- 즉, 변수를 따로 뽑아서 별도로 선언했을 때, 오류가 발생한다면, 타입 선언을 추가해줘야 한다.
+- 변수가 정말로 상수라면 상수 단언(as const)를 사용해야 한다.
+
+### 아이템 27: 함수형 기법과 라이브러리로 타입 흐름 유지하기
+
+- 자바스크립트에서는 서드파티 라이브러리(lodash, 람다 등) 종속성을 추가할 때, 서드파티 라이브러리를 사용하여 코드를 짧게 만드는데 시간이 오래든다면, 사용하지 않는 편이 나음.
+- 타입스크립트로 작성하면 서드파티 라이브러리를 사용하는 것이 무조건 유리.
+- 왜냐하면 타입 정보를 참고하며 작업할 수 있기 때문에
+- 내장된 함수형 기법과 lodash 같은 유틸ㄹ리티 라이브러리를 사용하는 것이 타입 흐름을 개선하고, 가독성을 높이고, 명시적인 타입 구문의 필요성을 줄여준다.
